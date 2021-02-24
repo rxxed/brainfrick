@@ -1,2 +1,2 @@
 all:
-	${CC} brainfrick.c -o brainfrick
+	${CC} brainfrick.c util.c -o brainfrick -Wall -Wextra -pedantic -std=c99
