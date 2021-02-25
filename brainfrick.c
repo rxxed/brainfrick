@@ -4,8 +4,6 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#define INLOOP          1
-#define NOTINLOOP       0
 #define TAPELEN         30000
 #define LPSTACKLEN      3000
 #define INCR            '+'
@@ -20,7 +18,6 @@
 typedef int cell;
 
 const char *prompt = ">> ";     /* repl prompt */
-int loopstatus = NOTINLOOP;
 cell tape[TAPELEN];
 cell *dp = tape;                /* data pointer */
 char *lpstack[LPSTACKLEN];      /* loop pointer stack */
@@ -111,10 +108,10 @@ parse(char *instr)
                                 /* add traversed length to instr_len */
                                 instr_len += (instr - lastlp());
                                 /*
-                                 * pop from loop pointer stack if dp is 1 otherwise just
+                                 * pop from loop pointer stack if *dp is 1 otherwise just
                                  * retrieve the last element (without deleting it)
                                  */
-                                instr = lastlp();
+                                instr = *dp == 1 ? poplp() : lastlp();
                                 
                         }
                         break;
