@@ -14,7 +14,7 @@
 #define PREV            '<'
 #define GET             ','
 #define PUT             '.'
-#define LOOPBEG         '['
+#define LOOPINIT        '['
 #define LOOPEND         ']'
 
 typedef int cell;
@@ -23,7 +23,7 @@ const char *prompt = ">> ";     /* repl prompt */
 int loopstatus = NOTINLOOP;
 cell tape[TAPELEN];
 cell *dp = tape;                /* data pointer */
-cell *lpstack[LPSTACKLEN];      /* loop pointer stack */
+char *lpstack[LPSTACKLEN];      /* loop pointer stack */
 int lptop = -1;                 /* loop stack top element tracker */
 
 void next();
@@ -36,9 +36,9 @@ void parse(char *);
 void die(const char *errmsg);
 char *ftostr(char *);
 void repl();
-cell *lastlp();
-cell *poplp();
-void pushlp();
+char *lastlp();
+char *poplp();
+void pushlp(char *);
 
 int
 main(int argc, char **argv)
@@ -54,7 +54,9 @@ main(int argc, char **argv)
         return 0;
 }
 
-/* switches to interactive mode */
+/*
+ * switches to interactive mode
+ */
 void
 repl()
 {
@@ -71,11 +73,10 @@ void
 parse(char *instr)
 {
         int c;
-        int len;
-        cell *loop_ptr;
+        int instr_len;
 
-        len = strlen(instr);
-        while (len--) {
+        instr_len = strlen(instr);
+        while (instr_len--) {
                 c = *instr;
                 switch (c) {
                 case NEXT:
@@ -96,23 +97,26 @@ parse(char *instr)
                 case GET:
                         get();
                         break;
-                case LOOPBEG:
+                case LOOPINIT:
                         if (!*dp) {
                                 /* jump to the next ']' then break */
-                                while (++*instr != ']')
+                                while (++*instr != LOOPEND)
                                         ;
                         } else {
-                                pushlp();
+                                pushlp(instr);
                         }
                         break;
                 case LOOPEND:
-                        if (!*dp)
-                                break;
-                        if (lptop == 0)
-                                loop_ptr = lastlp();
-                        else
-                                loop_ptr = poplp();
-                        dp = loop_ptr;
+                        if (*dp) {
+                                /* add traversed length to instr_len */
+                                instr_len += (instr - lastlp());
+                                /*
+                                 * pop from loop pointer stack if dp is 1 otherwise just
+                                 * retrieve the last element (without deleting it)
+                                 */
+                                instr = lastlp();
+                                
+                        }
                         break;
                 }
                 instr++;
@@ -161,6 +165,9 @@ decr()
         --(*dp);
 }
 
+/*
+ * displays errmsg and exits the program
+ */
 void
 die(const char *errmsg)
 {
@@ -174,6 +181,9 @@ die(const char *errmsg)
         exit(1);
 }
 
+/*
+ * returns contents of file 'fname' as a single string
+ */
 char *
 ftostr(char *fname)
 {
@@ -194,26 +204,36 @@ ftostr(char *fname)
         return buffer;
 }
 
+/*
+ * pushes cell pointed by dp to the loop pointer stack
+ */
 void
-pushlp()
+pushlp(char *instr)
 {
         if (lptop + 1 > LPSTACKLEN)
                 die("loop pointer stack out of bounds");
-        lpstack[++lptop] = dp;
+        lpstack[++lptop] = instr;
 }
 
-cell *
+/*
+ * returns last element from the loop pointer stack without
+ * deleting it
+ */
+char *
 lastlp()
 {
         if (lptop < 0)
-                die("no elements in loop pointer stack");
+                die("lastlp: no elements in loop pointer stack");
         return lpstack[lptop];
 }
 
-cell *
+/*
+ * pops last element from the loop pointer stack and returns it
+ */
+char *
 poplp()
 {
         if (lptop < 0)
-                die("no elements in loop pointer stack");
+                die("poplp: no elements in loop pointer stack");
         return lpstack[lptop--];
 }
