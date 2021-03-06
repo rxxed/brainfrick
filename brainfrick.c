@@ -6,19 +6,20 @@
 
 #define TAPELEN         30000
 #define LPSTACKLEN      3000
-#define INCR            '+'
-#define DECR            '-'
-#define NEXT            '>'
-#define PREV            '<'
-#define GET             ','
-#define PUT             '.'
-#define LOOPINIT        '['
-#define LOOPEND         ']'
+#define BF_INCR         '+'
+#define BF_DECR         '-'
+#define BF_NEXT         '>'
+#define BF_PREV         '<'
+#define BF_GET          ','
+#define BF_PUT          '.'
+#define BF_LOOPINIT     '['
+#define BF_LOOPEND      ']'
 
 typedef int cell;
 
 const char *prompt = ">> ";     /* repl prompt */
 cell tape[TAPELEN];
+const cell *fc = tape;          /* points to the first cell, required for tape bound checking */
 cell *dp = tape;                /* data pointer */
 char *lpstack[LPSTACKLEN];      /* loop pointer stack */
 int lptop = -1;                 /* loop stack top element tracker */
@@ -76,43 +77,41 @@ parse(char *instr)
         while (instr_len--) {
                 c = *instr;
                 switch (c) {
-                case NEXT:
+                case BF_NEXT:
                         next();
                         break;
-                case PREV:
+                case BF_PREV:
                         prev();
                         break;
-                case INCR:
+                case BF_INCR:
                         incr();
                         break;
-                case DECR:
+                case BF_DECR:
                         decr();
                         break;
-                case PUT:
+                case BF_PUT:
                         put();
                         break;
-                case GET:
+                case BF_GET:
                         get();
                         break;
-                case LOOPINIT:
-                        if (!*dp) {
-                                /* jump to the next ']' then break */
-                                while (++*instr != LOOPEND)
+                case BF_LOOPINIT:
+                        if (!*dp)
+                                /* jump to the end of the loop and break */
+                                while (++*instr != BF_LOOPEND)
                                         ;
-                        } else {
+                        else
                                 pushlp(instr);
-                        }
                         break;
-                case LOOPEND:
+                case BF_LOOPEND:
                         if (*dp) {
-                                /* add traversed length to instr_len */
+                                /* add traversed length to instr_len to extend the while loop */
                                 instr_len += (instr - lastlp());
                                 /*
-                                 * pop from loop pointer stack if *dp is 1 otherwise just
-                                 * retrieve the last element (without deleting it)
+                                 * pop from loop pointer stack if current cell is 1, otherwise
+                                 * just retrieve the last element without deleting it
                                  */
                                 instr = *dp == 1 ? poplp() : lastlp();
-                                
                         }
                         break;
                 }
@@ -138,14 +137,16 @@ put()
 void
 next()
 {
-        ++dp;
+        if (++dp > fc + TAPELEN)
+                die("tape memory out of bounds: overshot tape size");
 }
 
 /* moves data pointer to the previous cell (leftwards) */
 void
 prev()
 {
-        --dp;
+        if (--dp < fc)
+                die("tape memory out of bounds: undershot tape size");
 }
 
 /* increments value at cell pointed by dp */
