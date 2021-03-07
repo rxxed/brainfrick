@@ -20,9 +20,9 @@ typedef int cell;
 const char *prompt = ">> ";     /* repl prompt */
 cell tape[TAPELEN];
 const cell *fc = tape;          /* points to the first cell, required for tape bound checking */
-cell *dp = tape;                /* data pointer */
+cell *cp = tape;                /* points to the current cell */
 char *lpstack[LPSTACKLEN];      /* loop pointer stack */
-int lptop = -1;                 /* loop stack top element tracker */
+int lptop = -1;                 /* lpstack top element tracker */
 
 void next();
 void prev();
@@ -32,7 +32,7 @@ void get();
 void put();
 void parse(char *);
 void die(const char *errmsg);
-char *ftostr(char *);
+char *f2str(char *);
 void repl();
 char *lastlp();
 char *poplp();
@@ -43,7 +43,7 @@ main(int argc, char **argv)
 {
         if (argc > 1) {
                 char *code;
-                code = ftostr(argv[1]);
+                code = f2str(argv[1]);
                 parse(code);
         } else {
                 repl();
@@ -58,7 +58,7 @@ main(int argc, char **argv)
 void
 repl()
 {
-        printf("%s", prompt);
+        fprintf(stderr,"%s", prompt);
         die("repl not implemented");
         /* char *line = readline(prompt); */
         /* if (!line) */
@@ -96,7 +96,7 @@ parse(char *instr)
                         get();
                         break;
                 case BF_LOOPINIT:
-                        if (!*dp)
+                        if (!*cp)
                                 /* jump to the end of the loop and break */
                                 while (++*instr != BF_LOOPEND)
                                         ;
@@ -104,15 +104,18 @@ parse(char *instr)
                                 pushlp(instr);
                         break;
                 case BF_LOOPEND:
-                        if (*dp) {
+                        if (*cp) {
                                 /* add traversed length to instr_len to extend the while loop */
                                 instr_len += (instr - lastlp());
                                 /*
                                  * pop from loop pointer stack if current cell is 1, otherwise
                                  * just retrieve the last element without deleting it
                                  */
-                                instr = *dp == 1 ? poplp() : lastlp();
+                                instr = *cp == 1 ? poplp() : lastlp();
                         }
+                        break;
+                default:
+                        /* every other character is ignored */
                         break;
                 }
                 instr++;
@@ -123,21 +126,21 @@ parse(char *instr)
 void
 get()
 {
-        *dp = getchar();
+        *cp = getchar();
 }
 
 /* output the byte at the data pointer */
 void
 put()
 {
-        putchar(*dp);
+        putchar(*cp);
 }
 
 /* moves data pointer to the next cell (rightwards) */
 void
 next()
 {
-        if (++dp > fc + TAPELEN)
+        if (++cp > fc + TAPELEN)
                 die("tape memory out of bounds: overshot tape size");
 }
 
@@ -145,22 +148,22 @@ next()
 void
 prev()
 {
-        if (--dp < fc)
+        if (--cp < fc)
                 die("tape memory out of bounds: undershot tape size");
 }
 
-/* increments value at cell pointed by dp */
+/* increments value at cell pointed by cp */
 void
 incr()
 {
-        ++(*dp);
+        ++(*cp);
 }
 
-/* decrements value at cell pointed by dp */
+/* decrements value at cell pointed by cp */
 void
 decr()
 {
-        --(*dp);
+        --(*cp);
 }
 
 /*
@@ -183,7 +186,7 @@ die(const char *errmsg)
  * returns contents of file 'fname' as a single string
  */
 char *
-ftostr(char *fname)
+f2str(char *fname)
 {
         FILE *fp;
         char *buffer = 0;
@@ -203,7 +206,7 @@ ftostr(char *fname)
 }
 
 /*
- * pushes cell pointed by dp to the loop pointer stack
+ * pushes cell pointed by cp to the loop pointer stack
  */
 void
 pushlp(char *instr)
