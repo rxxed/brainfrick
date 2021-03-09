@@ -6,14 +6,6 @@
 
 #define TAPELEN         30000
 #define LPSTACKLEN      3000
-#define BF_INCR         '+'
-#define BF_DECR         '-'
-#define BF_NEXT         '>'
-#define BF_PREV         '<'
-#define BF_GET          ','
-#define BF_PUT          '.'
-#define BF_LOOPINIT     '['
-#define BF_LOOPEND      ']'
 
 typedef int cell;
 
@@ -24,15 +16,9 @@ cell *cp = tape;                /* points to the current cell */
 char *lpstack[LPSTACKLEN];      /* loop pointer stack */
 int lptop = -1;                 /* lpstack top element tracker */
 
-void next();
-void prev();
-void incr();
-void decr();
-void get();
-void put();
 void parse(char *);
 void die(const char *errmsg);
-char *f2str(char *);
+char *f2str(char *fname);
 void repl();
 char *lastlp();
 char *poplp();
@@ -72,38 +58,49 @@ parse(char *instr)
 {
         int c;
         int instr_len;
+        int input;
 
         instr_len = strlen(instr);
         while (instr_len--) {
                 c = *instr;
                 switch (c) {
-                case BF_NEXT:
-                        next();
+                case '>':
+                        /* moves data pointer to the next cell (rightwards) */
+                        if (++cp > fc + TAPELEN)
+                                die("tape memory out of bounds: overshot tape size");
                         break;
-                case BF_PREV:
-                        prev();
+                case '<':
+                        /* moves data pointer to the previous cell (leftwards) */
+                        if (--cp < fc)
+                                die("tape memory out of bounds: undershot tape size");
                         break;
-                case BF_INCR:
-                        incr();
+                case '+':
+                        /* increments value at cell pointed by cp */
+                        ++(*cp);
                         break;
-                case BF_DECR:
-                        decr();
+                case '-':
+                        /* decrements value at cell pointed by cp */
+                        --(*cp);
                         break;
-                case BF_PUT:
-                        put();
+                case '.':
+                        /* output the byte at the data pointer */
+                        putchar(*cp);
                         break;
-                case BF_GET:
-                        get();
+                case ',':
+                        /* accepts one byte of input and stores it in the current cell */
+                        if ((input = getchar()) != '\n' && input != EOF)
+                                *cp = input;
                         break;
-                case BF_LOOPINIT:
+                case '[':
+                        /* loop begins */
                         if (!*cp)
                                 /* jump to the end of the loop and break */
-                                while (++*instr != BF_LOOPEND)
+                                while (*(++instr) != ']')
                                         ;
                         else
                                 pushlp(instr);
                         break;
-                case BF_LOOPEND:
+                case ']':
                         if (*cp) {
                                 /* add traversed length to instr_len to extend the while loop */
                                 instr_len += (instr - lastlp());
@@ -120,50 +117,6 @@ parse(char *instr)
                 }
                 instr++;
         }
-}
-
-/* accepts one byte of input and stores it in the current cell */
-void
-get()
-{
-        *cp = getchar();
-}
-
-/* output the byte at the data pointer */
-void
-put()
-{
-        putchar(*cp);
-}
-
-/* moves data pointer to the next cell (rightwards) */
-void
-next()
-{
-        if (++cp > fc + TAPELEN)
-                die("tape memory out of bounds: overshot tape size");
-}
-
-/* moves data pointer to the previous cell (leftwards) */
-void
-prev()
-{
-        if (--cp < fc)
-                die("tape memory out of bounds: undershot tape size");
-}
-
-/* increments value at cell pointed by cp */
-void
-incr()
-{
-        ++(*cp);
-}
-
-/* decrements value at cell pointed by cp */
-void
-decr()
-{
-        --(*cp);
 }
 
 /*
