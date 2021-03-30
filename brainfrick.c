@@ -58,41 +58,34 @@ parse(char *instr)
 {
         int c;
         int instr_len;
-        int input;
+        int input;        /* for getchar() */
 
         instr_len = strlen(instr);
         while (instr_len--) {
                 c = *instr;
                 switch (c) {
                 case '>':
-                        /* moves data pointer to the next cell (rightwards) */
                         if (++cp > fc + TAPELEN)
                                 die("tape memory out of bounds: overshot tape size");
                         break;
                 case '<':
-                        /* moves data pointer to the previous cell (leftwards) */
                         if (--cp < fc)
                                 die("tape memory out of bounds: undershot tape size");
                         break;
                 case '+':
-                        /* increments value at cell pointed by cp */
                         ++(*cp);
                         break;
                 case '-':
-                        /* decrements value at cell pointed by cp */
                         --(*cp);
                         break;
                 case '.':
-                        /* output the byte at the data pointer */
                         putchar(*cp);
                         break;
                 case ',':
-                        /* accepts one byte of input and stores it in the current cell */
                         if ((input = getchar()) != '\n' && input != EOF)
                                 *cp = input;
                         break;
                 case '[':
-                        /* loop begins */
                         if (!*cp)
                                 /* jump to the end of the loop and break */
                                 while (*(++instr) != ']')
